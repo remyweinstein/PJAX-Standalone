@@ -9,7 +9,7 @@
  * @source https://github.com/thybag/PJAX-Standalone
  * @license MIT
  */
-(function() { 
+(function(){ 
 
 	// Object to store private values/methods.
 	var internal = {
@@ -29,6 +29,7 @@
 		// PJAX shell, so any code expecting PJAX will work
 		var pjax_shell = {
 			"connect": function() { return; },
+			"submit": function() { return; },
 			"invoke": function() {
 				var url = (arguments.length === 2) ? arguments[0] : arguments.url;
 				document.location = url;
@@ -88,6 +89,8 @@
 		evt.initEvent(event_name, true, true);
 		// If additional data was provided, add it to event
 		if(typeof data !== 'undefined') evt.data = data;
+    
+    node = internal.get_container_node(node);
 		node.dispatchEvent(evt);
 	};
 
@@ -220,7 +223,87 @@
 			}
 
 			// Fire ready event once all links are connected
-			internal.triggerEvent(internal.get_container_node(options.container), 'ready');
+			internal.triggerEvent(options.container, 'ready');
+			
+		}
+	};
+
+	/**
+	 * attachForm
+	 * Attach PJAX listener to the form.
+	 * @scope private
+	 * @param form. form that will be submit.
+	 * @param content_node. 
+	 */
+	internal.attachForm = function(form, options) {
+
+		// Ignore common non-PJAX loadable media types (pdf/doc/zips & images) unless user provides alternate array
+		var ignoreFileTypes = ['pdf','doc','docx','zip','rar','7z','gif','jpeg','jpg','png'];
+		if(typeof options.ignoreFileTypes === 'undefined') options.ignoreFileTypes = ignoreFileTypes;
+
+    options.method    = form.method;
+    options.data      = internal.serialize(form);
+    options.url       = form.action;
+
+    if (options.method === "GET" || options.method === "get") {
+      options.url += '?' + options.data;
+    }
+
+		// If PJAX data is specified, use as container
+		if(form.getAttribute('data-pjax')) {
+			options.container = form.getAttribute('data-pjax');
+		}
+
+		// If data-title is specified, use as title.
+		if(form.getAttribute('data-title')) {
+			options.title = form.getAttribute('data-title');
+		}
+
+		// Check options are valid.
+		options = internal.parseOptions(options);
+		if(options === false) return;
+
+    // handle the load.
+    //internal.handle(options);
+  
+		// Attach event.
+		internal.addEvent(form, 'submit', function(event) {
+			// Don't fire normal event
+      event.preventDefault();      
+			if(!event.preventDefault){ event.returnValue = false; }
+      
+			// handle the load.
+			internal.handle(options);
+		});
+
+	};
+
+	/**
+	 * parseForm
+	 * Parse all data of form.
+	 * @scope private
+	 * @param form. Dom node to parse for form.
+	 * @param options. Valid Options object.
+	 */
+	internal.parseForm = function(form, options) {
+    var tmp_opt;
+
+    // Override options history to true, else link parsing could be triggered by back button (which runs in no-history mode)
+    tmp_opt = internal.clone(options);
+    tmp_opt.history = true;
+    internal.attachForm(form, tmp_opt);
+
+		if(internal.firstrun) {
+			// Store array or all currently included script src's to avoid PJAX accidentally reloading existing libraries
+			var scripts = document.getElementsByTagName('script');
+			for(var c=0; c < scripts.length; c++) {
+				if(scripts[c].src && internal.loaded_scripts.indexOf(scripts[c].src) === -1){
+					internal.loaded_scripts.push(scripts[c].src);
+				}
+			}
+
+			// Fire ready event once all links are connected
+			internal.triggerEvent(options.container, 'ready');
 			
 		}
 	};
@@ -333,8 +416,8 @@
 		internal.triggerEvent(options.container, 'beforeSend', options);
 
 		// Do the request
-		internal.request(options.url, function(html) {
-
+		internal.request(options, function(html) {
+    
 			// Fail if unable to load HTML via AJAX
 			if(html === false){
 				internal.triggerEvent(options.container,'complete', options);
@@ -391,7 +474,7 @@
 	 * @param location. Page to request.
 	 * @param callback. Method to call when a page is loaded.
 	 */
-	internal.request = function(location, callback) {
+	internal.request = function(options, callback) {
 		// Create xmlHttpRequest object.
 		var xmlhttp;
 		try { 
@@ -410,9 +493,10 @@
 				callback(false);
 			}
 		};
+    
 		// Secret pjax ?get param so browser doesn't return pjax content from cache when we don't want it to
 		// Switch between ? and & so as not to break any URL params (Based on change by zmasek https://github.com/zmasek/)
-		xmlhttp.open("GET", location + ((!/[?&]/.test(location)) ? '?_pjax' : '&_pjax'), true);
+		xmlhttp.open(options.method, options.url + ((!/[?&]/.test(options.url)) ? '?_pjax' : '&_pjax') + options.data, true);
 		// Add headers so things can tell the request is being performed via AJAX.
 		xmlhttp.setRequestHeader('X-PJAX', 'true'); // PJAX header
 		xmlhttp.setRequestHeader('X-Requested-With', 'XMLHttpRequest');// Standard AJAX header.
@@ -480,6 +564,30 @@
 		// Return valid options
 		return options;
 	};
+  
+  internal.serialize = function(form) {
+    var inputs = form.querySelectorAll("input, select, textarea");
+    var obj = {};
+    var key;
+
+    for (key in inputs) {
+        if (inputs[key].tagName) {
+            if (inputs[key].type === "checkbox") {
+              if (inputs[key].checked) {
+                obj[inputs[key].name] = inputs[key].value;
+              }
+            } else {
+                obj[inputs[key].name] = inputs[key].value;
+            }
+        }
+    }
+
+    return Object.keys(obj).map(function(key) {
+              return encodeURIComponent(key) + '=' + encodeURIComponent(obj[key]); 
+            }).join('&');
+
+    return false;
+  };
 
 	/**
 	 * get_container_node
@@ -529,6 +637,7 @@
 			options.container = arguments[0];
 			options.useClass = arguments[1];
 		}
+    options.method = 'GET';
 		// Either JSON or container id
 		if(arguments.length === 1){
 			if(typeof arguments[0] === 'string' ) {
@@ -554,7 +663,44 @@
 			});
 		}
 	};
-	
+
+	/**
+	 * submit
+	 * pjax on form submit handler
+	 * submit({'content', 'form'});
+	 *
+	 * @scope public
+	 * @param options  
+	 */
+	this.submit = function(/* options */) {
+		var options = {};
+      
+		// submit(event, container)
+		if(arguments.length === 2){
+      var form = arguments[1];
+      var container = arguments[0];
+		}
+
+    options.container = container;
+    options.form      = document.getElementById(form);
+    
+    // Delete history and title if provided. These options should only be provided via invoke();
+		delete options.title;
+		delete options.history;
+		
+		internal.options = options;
+    
+		if(document.readyState === 'complete') {
+			internal.parseForm(options.form, options);
+		} else {
+			//Don't run until the window is ready.
+			internal.addEvent(window, 'load', function(){	
+				//Parse links using specified options
+				internal.parseForm(options.form, options);
+			});
+		}
+  };
+  
 	/**
 	 * invoke
 	 * Directly invoke a pjax page load.
