@@ -19,7 +19,7 @@ Once done, PJAX can be setup in 3 ways.
 #### Option 1
 Give all links a data-pjax attribute specifying where to place the content that gets loaded:
 
-    <a href='page1.php' data-pjax='content'>Page 1</a>
+    <a href='page1.php' data-pjax='contentID'>Page 1</a>
 
 Then call:
 
@@ -32,11 +32,11 @@ Add links normally
 	
 Then specify which container they should use, via either
 
-	pjax.connect('content');
+	pjax.connect('contentID');
 
 or
 
-	pjax.connect({container: 'content'});
+	pjax.connect({container: 'contentID'});
 
 #### Option 3
 Set all links with a specific class to use a particular container using:
@@ -46,8 +46,13 @@ Set all links with a specific class to use a particular container using:
 ```
 
 ```
-	pjax.connect('content', 'pjaxer');
+	pjax.connect('contentID', 'pjaxer');
 ```	
+#### Option 4
+Submits a form via pjax:
+```
+	pjax.submit('contentID', 'formID');
+```
 ### Options
 
 The PJAX connect method supports the following options:

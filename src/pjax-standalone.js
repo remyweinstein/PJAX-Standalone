@@ -269,8 +269,7 @@
 		// Attach event.
 		internal.addEvent(form, 'submit', function(event) {
 			// Don't fire normal event
-      event.preventDefault();      
-			if(!event.preventDefault){ event.returnValue = false; }
+      if(event.preventDefault){ event.preventDefault(); }else{ event.returnValue = false; }
       
 			// handle the load.
 			internal.handle(options);
