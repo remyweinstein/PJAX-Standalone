@@ -5,9 +5,9 @@
   "description": "A standalone implementation of Pushstate AJAX, for non-jquery webpages.",
   "license": "MIT",
   "ignore": [
-    "test/",
+    "demo/",
     "readme.md",
-    "Gruntfile.js",
+    "gulpfile.js",
     "package.json"
   ]
 }
