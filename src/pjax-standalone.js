@@ -475,7 +475,8 @@
 	 */
 	internal.request = function(options, callback) {
 		// Create xmlHttpRequest object.
-		var xmlhttp;
+		var xmlhttp, body, data, secret;
+    
 		try { 
 			xmlhttp = window.XMLHttpRequest? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP"); 
 		}  catch (e) { 
@@ -493,14 +494,28 @@
 			}
 		};
     
+    if (options.method === "POST" || options.method === "post") {
+      body = options.data;
+      data = '';
+    } else {
+      body = null;
+      data = options.data;
+    }
+    
 		// Secret pjax ?get param so browser doesn't return pjax content from cache when we don't want it to
 		// Switch between ? and & so as not to break any URL params (Based on change by zmasek https://github.com/zmasek/)
-		xmlhttp.open(options.method, options.url + ((!/[?&]/.test(options.url)) ? '?_pjax' : '&_pjax') + options.data, true);
+    if (options.method === "GET" || options.method === "get") {
+      secret = (!/[?&]/.test(options.url) && data === '') ? '?_pjax' : '&_pjax';
+    } else {
+      secret = '';
+    }
+    
+		xmlhttp.open(options.method, options.url + data + secret, true);
 		// Add headers so things can tell the request is being performed via AJAX.
 		xmlhttp.setRequestHeader('X-PJAX', 'true'); // PJAX header
 		xmlhttp.setRequestHeader('X-Requested-With', 'XMLHttpRequest');// Standard AJAX header.
 
-		xmlhttp.send(null);
+		xmlhttp.send(body);
 	};
 
 	/**
