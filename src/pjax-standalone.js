@@ -268,6 +268,8 @@
   
 		// Attach event.
 		internal.addEvent(form, 'submit', function(event) {
+      console.log('event = ', event);
+      
 			// Don't fire normal event
       if(event.preventDefault){ event.preventDefault(); }else{ event.returnValue = false; }
       
@@ -475,7 +477,8 @@
 	 */
 	internal.request = function(options, callback) {
 		// Create xmlHttpRequest object.
-		var xmlhttp, body, data, secret;
+		var xmlhttp, body, data, secret,
+        isPost = (options.method === "POST" || options.method === "post");
     
 		try { 
 			xmlhttp = window.XMLHttpRequest? new XMLHttpRequest() : new ActiveXObject("Microsoft.XMLHTTP"); 
@@ -494,7 +497,7 @@
 			}
 		};
     
-    if (options.method === "POST" || options.method === "post") {
+    if (isPost) {
       body = options.data;
       data = '';
     } else {
@@ -504,7 +507,7 @@
     
 		// Secret pjax ?get param so browser doesn't return pjax content from cache when we don't want it to
 		// Switch between ? and & so as not to break any URL params (Based on change by zmasek https://github.com/zmasek/)
-    if (options.method === "GET" || options.method === "get") {
+    if (!isPost) {
       secret = (!/[?&]/.test(options.url) && data === '') ? '?_pjax' : '&_pjax';
     } else {
       secret = '';
@@ -513,6 +516,11 @@
 		xmlhttp.open(options.method, options.url + data + secret, true);
 		// Add headers so things can tell the request is being performed via AJAX.
 		xmlhttp.setRequestHeader('X-PJAX', 'true'); // PJAX header
+    
+    if (isPost) {
+      xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    }
+    
 		xmlhttp.setRequestHeader('X-Requested-With', 'XMLHttpRequest');// Standard AJAX header.
 
 		xmlhttp.send(body);
